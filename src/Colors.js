@@ -173,18 +173,18 @@ class Colors {
      * @param {string | number} keyword Word that'll be used to identify color
      * @param {boolean} bg Whether you want to color background(true) or foreground(false), may be overwritten if using keyword that has bg enabled by default
      */
-    static keyword(keyword, bg = false) {
-        let colored = this.valueOf();
+    static keyword(string, keyword, bg = false) {
+        let colored = string;
 
         switch (typeof keyword) {
             case 'number':
-                colored = keyword < 16 ? Colors.color4Bit(this.valueOf(), keyword, bg)
-                        : keyword < 256 ? Colors.color8Bit(this.valueOf(), keyword, bg)
+                colored = keyword < 16 ? Colors.color4Bit(string, keyword, bg)
+                        : keyword < 256 ? Colors.color8Bit(string, keyword, bg)
                         : Colors.colorHEX(this.valueOf(), keyword.toString(), bg);
                 break;
             case 'string':
                 if (!!colors[keyword])
-                    colored = !bg ? Colors.colorAlias(this.valueOf(), keyword) : Colors.colorAlias(this.valueOf(), keyword+'Bg') || Colors.colorAlias(this.valueOf(), keyword);
+                    colored = !bg ? Colors.colorAlias(string, keyword) : Colors.colorAlias(string, keyword+'Bg') || Colors.colorAlias(string, keyword);
                 break;
         }
     
@@ -196,8 +196,6 @@ class Colors {
      * @returns {string} pure string without any attributes
      */
     static pure(string) {
-        let string = this.valueOf();
-
         string = string.split('\x1b[');
         string = string[Math.round((string.length-1)/2)].replace(/\d+[m]/g, '');
     
@@ -212,28 +210,28 @@ class ColorStyle {
         else if (typeof name != 'string' || name.length < 1)
             throw new Error('Parameter name has to be typeof string and be at least 1 character long.')
 
-        if (styleString.includes('\033style\033')) {
+        if (styleString.includes('!STYLE!')) {
             this.code = styleString;
         } else {
             const arr = styleString.split('.');
-            let char = '';
+            let char = ' ';
             arr.forEach((style) => char = char.keyword(style));
             const style = char.valueOf().split(char.pure);
-            style.splice(Math.round((style.length-1)/2), 0, '\033style\033');
+            style.splice(Math.round((style.length-1)/2), 0, '!STYLE!');
             this.code = style.join('');
         }
 
         Colors[name] = function (string) {
-            return this.code.replace('\033style\033', string);
+            return this.code.replace('!STYLE!', string);
         }
 
         extendPrototype(name, function () {
-            return this.code.replace('\033style\033', this.valueOf());
+            return this.code.replace('!STYLE!', this.valueOf());
         });
     }
 
     color(string) {
-        return this.code.replace('\033style\033', string);
+        return this.code.replace('!STYLE!', string);
     }
 }
 
