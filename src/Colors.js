@@ -201,23 +201,31 @@ class Colors {
     
         return string;
     }
+
+    static style(string) {
+        return string.valueOf().split(Colors.pure(string));
+    }
 }
 
 class ColorStyle {
-    constructor(name, styleString) {
-        if (typeof styleString != 'string')
-            throw new Error('Parameter styleString has to be typeof string');
-        else if (typeof name != 'string' || name.length < 1)
+    constructor(name, styleCode) {
+        if (typeof name != 'string' || name.length < 1)
             throw new Error('Parameter name has to be typeof string and be at least 1 character long.')
 
-        if (styleString.includes('!STYLE!')) {
-            this.code = styleString;
+        if (styleCode.includes('!STYLE!')) {
+            this.code = styleCode;
+        } else if (Array.isArray(styleCode)) {
+            styleCode.splice(Math.round((styleCode.length-1)/2), 0, '!STYLE!');
+            this.code = styleCode.join('');
         } else {
-            const arr = styleString.split('.');
+            const arr = styleCode.split('.');
             let char = ' ';
-            arr.forEach((style) => char = char.keyword(style));
-            const style = char.valueOf().split(char.pure);
+
+            arr.forEach((kw) => char = char.keyword(kw));
+
+            const style = Colors.style(char);
             style.splice(Math.round((style.length-1)/2), 0, '!STYLE!');
+
             this.code = style.join('');
         }
 
@@ -279,6 +287,10 @@ extendPrototype('keyword', function(keyword, bg) {
 
 extendPrototype('pure', function() {
     return Colors.pure(this.valueOf());
+});
+
+extendPrototype('style', function() {
+    return Colors.style(this.valueOf());
 });
 
 module.exports = { Colors, ColorStyle };
