@@ -1,4 +1,4 @@
-require('./Colors');
+const { Colors, ColorStyle } = require('./Colors');
 
 class FrameBuffer {
     static buffer;
@@ -109,7 +109,7 @@ class Canvas {
 
     clear() {
         const tempPixels = {};
-        const blankCharacter = ' '.keyword(this.backgroundColor, true);
+        const blankCharacter = Colors.keyword(' ', this.backgroundColor, true);
 
         const w = this.width;
         const h = this.height;
@@ -143,7 +143,7 @@ class Canvas {
         if (x < 0 || x >= this.width || y < 0 || y >= this.width)
             return;
 
-        this.pixels[x][y] = [' '.keyword(mainColor, true), ' '.keyword(secondaryColor, true)];
+        this.pixels[x][y] = [ Colors.keyword(' ', mainColor, true), Colors.keyword(' ', secondaryColor, true) ];
     }
 
     drawText(x, y, text) {
@@ -151,9 +151,9 @@ class Canvas {
         if (typeof text != 'string')
             throw new Error('Parameter text has to be string');
 
-        text = text.keyword(this.foregroundColor).keyword(this.backgroundColor, true);
+        text = Colors.keyword(Colors.keyword(text, this.foregroundColor), this.backgroundColor, true);
 
-        const style = text.style;
+        const style = new ColorStyle(text.style);
         const pureText = text.pure;
 
         if (y < 0 || y >= this.height)
@@ -163,7 +163,7 @@ class Canvas {
         let offset = 0;
 
         for (let i in pureText) {
-            const letter = pureText[i].implementStyle(style);
+            const letter = style.color(pureText[i]);
 
             if (x < 0 || x + offset >= this.width)
                 continue;
