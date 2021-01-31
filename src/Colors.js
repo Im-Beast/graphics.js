@@ -7,7 +7,6 @@
  * @param {function} func If function has attributes it'll be set as extended function and if its not it'll be set as getter
  */
 function extendPrototype(alias, func) {
-
     Object.defineProperty(String.prototype, alias, func.length
         ? { value: func }
         : { get: func }
@@ -236,5 +235,18 @@ extendPrototype('pure', function() {
     string = string.split('\x1b[');
     string = string[Math.round((string.length-1)/2)].replace(/\d+[m]/g, '');
 
+    return string;
+});
+
+//todo: make it actually not dogshit
+extendPrototype('style', function() {
+    let string = this.valueOf().split(this.pure);
+    return string;
+});
+
+extendPrototype('implementStyle', function(style) {
+    let copy = [...style];
+    copy.splice(Math.round((style.length-1)/2), 0, this.valueOf()).join('');
+    let string = copy.join('');
     return string;
 });
