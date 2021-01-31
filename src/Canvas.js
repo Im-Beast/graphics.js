@@ -3,12 +3,14 @@ require('./Colors');
 class FrameBuffer {
     static buffer;
 
+    static height = 0;
+    static width = 0;
+
     static #autoUpdate = (() => {
         process.stdout.on('resize', FrameBuffer.update);
         FrameBuffer.update();
     })();
 
-    //todo: implement auto sizing of framebuffer to improve performance
     static update() {
         const tempBuffer = FrameBuffer.buffer || { };
 
@@ -32,10 +34,13 @@ class FrameBuffer {
         const columns = (process.stdout.columns-1)/2
         const rows = process.stdout.rows-1;
 
+        const height = rows > this.height ? this.height : rows;
+        const width = columns > this.width ? this.width : columns;
+
         let string = '';
-        for (let y = 0; y < rows; ++y) {
+        for (let y = 0; y < height; ++y) {
             string += '\r';
-            for (let x = 0; x < columns; ++x) {
+            for (let x = 0; x < width; ++x) {
                 string += FrameBuffer.buffer[y][x].join('');
             }
             string += '\n';
@@ -44,7 +49,22 @@ class FrameBuffer {
         process.stdout.write(string);
     }
 
-    static setPixel(x, y, chars) {       
+    static setPixel(x, y, chars) {
+        if (typeof x != 'number' || typeof y != 'number')
+            throw new Error('Pixel position has to be a number!');
+
+        if (!FrameBuffer.buffer[y] || !FrameBuffer.buffer[y][x])
+            return;
+
+        x = Math.round(x);
+        y = Math.round(y);
+
+        if (x > this.width)
+            this.width = x+1;
+
+        if (y > this.height)
+            this.height = y+1;
+
         FrameBuffer.buffer[y][x] = chars;
     }
 
@@ -120,9 +140,6 @@ class Canvas {
     }
 
     drawPixel(x, y, mainColor, secondaryColor = mainColor) {
-        x = Math.round(x);
-        y = Math.round(y);
-
         if (x < 0 || x >= this.width || y < 0 || y >= this.width)
             return;
 
@@ -130,9 +147,7 @@ class Canvas {
     }
 
     drawText(x, y, text) {
-        x = Math.round(x);
-        y = Math.round(y);
-     
+    
         if (typeof text != 'string')
             throw new Error('Parameter text has to be string');
 
