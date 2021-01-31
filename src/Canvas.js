@@ -6,7 +6,7 @@ class FrameBuffer {
     static #autoUpdate = (() => {
         process.stdout.on('resize', FrameBuffer.update);
         FrameBuffer.update();
-    });
+    })();
 
     //todo: implement auto sizing of framebuffer to improve performance
     static update() {
@@ -16,7 +16,7 @@ class FrameBuffer {
         const rows = process.stdout.rows-1;
 
         for (let y = 0; y < rows; ++y) {
-            tempBuffer[y] ||= {};
+            tempBuffer[y] = {};
             for (let x = 0; x < columns; ++x) {
                 tempBuffer[y][x] ||= [' ', ' '];
             }
@@ -29,10 +29,13 @@ class FrameBuffer {
     static draw() {
         process.stdout.cursorTo(-1, -1);
 
+        const columns = (process.stdout.columns-1)/2
+        const rows = process.stdout.rows-1;
+
         let string = '';
-        for (let y = 0; y < height; ++y) {
+        for (let y = 0; y < rows; ++y) {
             string += '\r';
-            for (let x = 0; x < width; ++x) {
+            for (let x = 0; x < columns; ++x) {
                 string += FrameBuffer.buffer[y][x].join('');
             }
             string += '\n';
@@ -41,10 +44,7 @@ class FrameBuffer {
         process.stdout.write(string);
     }
 
-    static setPixel(x, y, chars) {
-        if (!FrameBuffer[x] || !FrameBuffer[x][y])
-            return;
-        
+    static setPixel(x, y, chars) {       
         FrameBuffer.buffer[y][x] = chars;
     }
 
@@ -74,18 +74,22 @@ class Canvas {
             top: experimental.top || 0,
             left: experimental.left || 0,
             fpsStabilisation: !!experimental.fpsStabilisation || false
-        }
+        };
 
         this.pixels = {};
 
-        this.settings = settings;
+        this.onDraw = () => {};
 
         this.clear();
+
+        this.setFrameRate(60);
+
+        console.clear();
     }
 
     clear() {
         const tempPixels = {};
-        const blankCharacter = ' '.keyword(this.settings.backgroundColor, true);
+        const blankCharacter = ' '.keyword(this.backgroundColor, true);
 
         const w = this.width;
         const h = this.height;
@@ -98,20 +102,21 @@ class Canvas {
         }
 
         this.pixels = tempPixels;
-        FrameBuffer
     }
 
     drawFrame() {
         const offsetX = this.experimental.left;
         const offsetY = this.experimental.top;
 
+        this.onDraw();
+
         for (let y in this.pixels) {
             for (let x in this.pixels[y]) {
-                FrameBuffer.setPixel(y + offsetY, x + offsetX, this.pixels[y][x]);
+                FrameBuffer.setPixel(y/1 + offsetY, x/1 + offsetX, this.pixels[y][x]);
             }
         }
 
-        FrameBuffer.draw();   
+        FrameBuffer.draw();
     }
 
     drawPixel(x, y, mainColor, secondaryColor = mainColor) {
@@ -121,7 +126,7 @@ class Canvas {
         if (x < 0 || x >= this.width || y < 0 || y >= this.width)
             return;
 
-        this.pixels[x][y] = [char.keyword(mainColor, true), char.keyword(secondaryColor, true)];
+        this.pixels[x][y] = [' '.keyword(mainColor, true), ' '.keyword(secondaryColor, true)];
     }
 
     drawText(x, y, text) {
@@ -142,13 +147,13 @@ class Canvas {
         let subPixel = 0;
         let offset = 0;
 
-        for (let letter of pureText) {
-            letter = letter.implementStyle(style);
+        for (let i in pureText) {
+            const letter = pureText[i].implementStyle(style);
 
             if (x < 0 || x + offset >= this.width)
                 continue;
 
-            this.pixels[y][x + offset][subPixel] &&= letter;
+            this.pixels[x + offset][y][subPixel] &&= letter;
             subPixel = ++subPixel % 2;
 
             //magic
@@ -163,19 +168,9 @@ class Canvas {
         if (!!this.drawInterval)
             clearInterval(this.drawInterval);
 
-        this.drawInterval = setInterval(this.drawFrame, fps <= 0 ? 0 : 1/(fps/1000));
-    }
-
-    set width(w) {
-        console.clear();
-        this.clear();
-        this.width = w;
-    }
-
-    set height(h) {
-        console.clear();
-        this.clear();
-        this.height = h;
+        this.drawInterval = setInterval(
+            () => this.drawFrame()
+        , fps <= 0 ? 0 : 1/(fps/1000));
     }
 
 }
