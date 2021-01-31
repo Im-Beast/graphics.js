@@ -208,10 +208,7 @@ class Colors {
 }
 
 class ColorStyle {
-    constructor(name, styleCode) {
-        if (typeof name != 'string' || name.length < 1)
-            throw new Error('Parameter name has to be typeof string and be at least 1 character long.')
-
+    constructor(styleCode, name = null) {
         if (styleCode.includes('!STYLE!')) {
             this.code = styleCode;
         } else if (Array.isArray(styleCode)) {
@@ -229,13 +226,20 @@ class ColorStyle {
             this.code = style.join('');
         }
 
-        Colors[name] = function (string) {
-            return this.code.replace('!STYLE!', string);
-        }
+        if (!!name) {
+            if (typeof name != 'string')
+                throw new Error('Parameter name if used has to be typeof string');
+            if (name.length < 1)
+                throw new Error('Parameter name has to be at least 1 character long.');
+            
+            Colors[name] = function (string) {
+                return this.code.replace('!STYLE!', string);
+            }
 
-        extendPrototype(name, function () {
-            return this.code.replace('!STYLE!', this.valueOf());
-        });
+            extendPrototype(name, function () {
+                return this.code.replace('!STYLE!', this.valueOf());
+            });
+        }
     }
 
     color(string) {
