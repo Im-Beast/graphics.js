@@ -13,7 +13,7 @@ function extendPrototype(alias, func) {
     );
 }
 
-var colors = {}
+let colors = {}
 
 /**
  * @description Aliases for 4bit color pallette
@@ -98,155 +98,189 @@ for (let code in Attributes) {
     });
 }
 
-/**
- * @param {string} string Text that will be colored
- * @param {string} colorAlias Color alias
- */
-function colorAlias(string, colorAlias) {
-    return colors[colorAlias] + string + '\x1b[0m';
+class Colors {
+    /**
+     * @param {string} string Text that will be colored
+     * @param {number} color Color from 16-color pallette [0-15]
+     * @param {boolean} bg Whether you want to color background(true) or foreground(false)
+     * @returns {string} Colored text
+     */
+    static color4Bit(string, color, bg) {
+        let colorCode = color < 8 ? 30 : 82;
+        colorCode = `\x1b[${colorCode+color+ bg ? 10 : 0}m`;
+        return colorCode + string + '\x1b[0m';
+    }
+
+    /**
+     * @param {string} string Text that will be colored
+     * @param {string} colorAlias Color alias
+     */
+    static colorAlias(string, colorAlias) {
+        return colors[colorAlias] + string + '\x1b[0m';
+    }
+
+    /**
+     * @param {string} string Text that will be colored
+     * @param {number} red Amount of Red [0-255]
+     * @param {number} green Amount of Green [0-255]
+     * @param {number} blue Amount of Blue [0-255]
+     * @param {boolean} bg Whether you want to color background(true) or foreground(false)
+     * @returns {string} Colored text
+     */
+    static colorRGB(string, red, green, blue, bg) {
+        let number = bg ? 48 : 38;
+
+        red   = Math.round(red)   || 0;
+        green = Math.round(green) || 0;
+        blue  = Math.round(blue)  || 0;
+
+        let colorCode = `\x1b[${number};2;${red};${green};${blue}m`;
+
+        return colorCode + string + '\x1b[0m';
+    }
+
+    /**
+     * @param {string} string Text that will be colored
+     * @param {string} hex Hex string in pattern #123456 or 123456 where every number represents hexadecimal value
+     * @param {boolean} bg Whether you want to color background(true) or foreground(false)
+     */
+    static colorHEX(string, hex, bg) {
+        hex = hex.substr(hex.indexOf('#')+1, 6).match(/.{2}/g);
+        let red   = parseInt(hex[0],16);
+        let green = parseInt(hex[1],16);
+        let blue  = parseInt(hex[2],16);
+        return colorRGB(string, red, green, blue, bg);
+    }
+
+    /**
+     * @param {string} string Text that will be colored
+     * @param {number} color Color from 256-color lookup table [0-255]
+     * @param {boolean} bg Whether you want to color background(true) or foreground(false)
+     * @returns {string} Colored text
+     */
+    static color8Bit(string, color, bg) {
+        let number = bg ? 48 : 38;
+
+        color = Math.round(color) % 256 || 0;
+
+        let colorCode = `\x1b[${number};5;${color}m`;
+
+        return colorCode + string + '\x1b[0m';
+    }
+
+    /**
+     * @param {string} string Text that will be colored
+     * @param {string | number} keyword Word that'll be used to identify color
+     * @param {boolean} bg Whether you want to color background(true) or foreground(false), may be overwritten if using keyword that has bg enabled by default
+     */
+    static keyword(keyword, bg = false) {
+        let colored = this.valueOf();
+
+        switch (typeof keyword) {
+            case 'number':
+                colored = keyword < 16 ? Colors.color4Bit(this.valueOf(), keyword, bg)
+                        : keyword < 256 ? Colors.color8Bit(this.valueOf(), keyword, bg)
+                        : Colors.colorHEX(this.valueOf(), keyword.toString(), bg);
+                break;
+            case 'string':
+                if (!!colors[keyword])
+                    colored = !bg ? Colors.colorAlias(this.valueOf(), keyword) : Colors.colorAlias(this.valueOf(), keyword+'Bg') || Colors.colorAlias(this.valueOf(), keyword);
+                break;
+        }
+    
+        return colored;
+    }
+    
+    /**
+     * @param {string} string Colored text that will be converted to pure one
+     * @returns {string} pure string without any attributes
+     */
+    static pure(string) {
+        let string = this.valueOf();
+
+        string = string.split('\x1b[');
+        string = string[Math.round((string.length-1)/2)].replace(/\d+[m]/g, '');
+    
+        return string;
+    }
+}
+
+class ColorStyle {
+    constructor(name, styleString) {
+        if (typeof styleString != 'string')
+            throw new Error('Parameter styleString has to be typeof string');
+        else if (typeof name != 'string' || name.length < 1)
+            throw new Error('Parameter name has to be typeof string and be at least 1 character long.')
+
+        if (styleString.includes('\033style\033')) {
+            this.code = styleString;
+        } else {
+            const arr = styleString.split('.');
+            let char = '';
+            arr.forEach((style) => char = char.keyword(style));
+            const style = char.valueOf().split(char.pure);
+            style.splice(Math.round((style.length-1)/2), 0, '\033style\033');
+            this.code = style.join('');
+        }
+
+        Colors[name] = function (string) {
+            return this.code.replace('\033style\033', string);
+        }
+
+        extendPrototype(name, function () {
+            return this.code.replace('\033style\033', this.valueOf());
+        });
+    }
+
+    color(string) {
+        return this.code.replace('\033style\033', string);
+    }
 }
 
 allAliases.forEach((alias) => {
     extendPrototype(alias, function() {
-        return colorAlias(this, alias);
+        return Colors.colorAlias(this.valueOf(), alias);
     });
 });
 
-/**
- * @param {string} string Text that will be colored
- * @param {number} red Amount of Red [0-255]
- * @param {number} green Amount of Green [0-255]
- * @param {number} blue Amount of Blue [0-255]
- * @param {boolean} bg Whether you want to color background(true) or foreground(false)
- * @returns {string} Colored text
- */
-function colorRGB(string, red, green, blue, bg) {
-    let number = bg ? 48 : 38;
-
-    red   = Math.round(red)   || 0;
-    green = Math.round(green) || 0;
-    blue  = Math.round(blue)  || 0;
-
-    let colorCode = `\x1b[${number};2;${red};${green};${blue}m`;
-
-    return colorCode + string + '\x1b[0m';
-}
-
 extendPrototype('rgb', function(r, g, b) {
-    return colorRGB(this, r, g, b, false);
+    return Colors.colorRGB(this.valueOf(), r, g, b, false);
 });
 
 extendPrototype('rgbBg', function(r, g, b) {
-    return colorRGB(this, r, g, b, true);
+    return Colors.colorRGB(this.valueOf(), r, g, b, true);
 });
 
-/**
- * @param {string} string Text that will be colored
- * @param {string} hex Hex string in pattern #123456 or 123456 where every number represents hexadecimal value
- * @param {boolean} bg Whether you want to color background(true) or foreground(false)
- */
-function colorHEX(string, hex, bg) {
-    hex = hex.substr(hex.indexOf('#')+1, 6).match(/.{2}/g);
-    let red   = parseInt(hex[0],16);
-    let green = parseInt(hex[1],16);
-    let blue  = parseInt(hex[2],16);
-    return colorRGB(string, red, green, blue, bg);
-}
-
 extendPrototype('hex', function(hex) {
-    return colorHEX(this, hex, false);
+    return Colors.colorHEX(this.valueOf(), hex, false);
 });
 
 extendPrototype('hexBg', function(hex) {
-    return colorHEX(this, hex, true);
+    return Colors.colorHEX(this.valueOf(), hex, true);
 });
 
-/**
- * @param {string} string Text that will be colored
- * @param {number} color Color from 256-color lookup table [0-255]
- * @param {boolean} bg Whether you want to color background(true) or foreground(false)
- * @returns {string} Colored text
- */
-function color8Bit(string, color, bg) {
-    let number = bg ? 48 : 38;
-
-    color = Math.round(color) % 256 || 0;
-
-    let colorCode = `\x1b[${number};5;${color}m`;
-
-    return colorCode + string + '\x1b[0m';
-}
-
 extendPrototype('ansi8Bit', function(color) {
-    return color8Bit(this, color, false);
+    return Colors.color8Bit(this.valueOf(), color, false);
 });
 
 extendPrototype('ansi8BitBg', function(color) {
-    return color8Bit(this, color, true);
+    return Colors.color8Bit(this.valueOf(), color, true);
 });
 
-/**
- * @param {string} string Text that will be colored
- * @param {number} color Color from 16-color pallette [0-15]
- * @param {boolean} bg Whether you want to color background(true) or foreground(false)
- * @returns {string} Colored text
- */
-function color4Bit(string, color, bg) {
-    let colorCode = color < 8 ? 30 : 82;
-    colorCode = `\x1b[${colorCode+color+ bg ? 10 : 0}m`;
-    return colorCode + string + '\x1b[0m';
-}
-
 extendPrototype('ansi4Bit', function(color) {
-    return color4Bit(this, color, false);
+    return Colors.color4Bit(this.valueOf(), color, false);
 });
 
 extendPrototype('ansi4BitBg', function(color) {
-    return color4Bit(this, color, true);
+    return Colors.color4Bit(this.valueOf(), color, true);
 });
 
-/**
- * Find color using string or number
- */
 extendPrototype('keyword', function(keyword, bg) {
-    let colored = this;
-
-    switch (typeof keyword) {
-        case 'number':
-            colored = keyword < 16 ? color4Bit(this, keyword, bg)
-                    : keyword < 256 ? color8Bit(this, keyword, bg)
-                    : colorHEX(this, keyword.toString(), bg);
-            break;
-        case 'string':
-            if (!!colors[keyword])
-                colored = !bg ? colorAlias(this, keyword) : colorAlias(this, keyword+'Bg') || colorAlias(this, keyword);
-            break;
-    }
-
-    return colored;
+    return Colors.keyword(this.valueOf(), keyword, bg);
 });
 
-/**
- * Returns pure string without attributes
- */
 extendPrototype('pure', function() {
-    let string = this;
-
-    string = string.split('\x1b[');
-    string = string[Math.round((string.length-1)/2)].replace(/\d+[m]/g, '');
-
-    return string;
+    return Colors.pure(this.valueOf());
 });
 
-//todo: make it actually not dogshit
-extendPrototype('style', function() {
-    let string = this.valueOf().split(this.pure);
-    return string;
-});
-
-extendPrototype('implementStyle', function(style) {
-    let copy = [...style];
-    copy.splice(Math.round((style.length-1)/2), 0, this.valueOf()).join('');
-    let string = copy.join('');
-    return string;
-});
+module.exports = { Colors, ColorStyle };
