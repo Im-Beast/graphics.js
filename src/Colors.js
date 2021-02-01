@@ -210,10 +210,10 @@ class Colors {
 class ColorStyle {
     constructor(styleCode, name = null) {
         if (styleCode.includes('!STYLE!')) {
-            this.code = styleCode;
+            styleCode = styleCode;
         } else if (Array.isArray(styleCode)) {
             styleCode.splice(Math.round((styleCode.length-1)/2), 0, '!STYLE!');
-            this.code = styleCode.join('');
+            styleCode = styleCode.join('');
         } else {
             const arr = styleCode.split('.');
             let char = ' ';
@@ -223,8 +223,10 @@ class ColorStyle {
             const style = Colors.style(char);
             style.splice(Math.round((style.length-1)/2), 0, '!STYLE!');
 
-            this.code = style.join('');
+            styleCode = style.join('');
         }
+
+        this.code = styleCode;
 
         if (!!name) {
             if (typeof name != 'string')
@@ -233,11 +235,11 @@ class ColorStyle {
                 throw new Error('Parameter name has to be at least 1 character long.');
             
             Colors[name] = function (string) {
-                return this.code.replace('!STYLE!', string);
+                return styleCode.replace('!STYLE!', string);
             }
 
             extendPrototype(name, function () {
-                return this.code.replace('!STYLE!', this.valueOf());
+                return styleCode.replace('!STYLE!', this.valueOf());
             });
         }
     }
