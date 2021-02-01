@@ -1,4 +1,5 @@
 const { Colors, ColorStyle } = require('./Colors');
+const Shape = require('./Shape');
 
 class FrameBuffer {
     static buffer;
@@ -143,11 +144,13 @@ class Canvas {
         if (x < 0 || x >= this.width || y < 0 || y >= this.width)
             return;
 
+        x = Math.round(x);
+        y = Math.round(y);
+
         this.pixels[x][y] = [ Colors.keyword(' ', mainColor, true), Colors.keyword(' ', secondaryColor, true) ];
     }
 
     drawText(x, y, text) {
-    
         if (typeof text != 'string')
             throw new Error('Parameter text has to be string');
 
@@ -176,6 +179,19 @@ class Canvas {
         }
     }
 
+    drawShape(shape, mainColor = this.foregroundColor, secondaryColor = mainColor) {
+        if (!(shape instanceof Shape))
+            throw new Error('Parameter shape has to be instanceof Shape');
+
+        for (let x in shape.pixels) {
+            const yArray = shape.pixels[x];
+
+            yArray.forEach(
+                (y) => this.drawPixel(x, y, mainColor, secondaryColor)
+            );
+        };
+    }
+
     setFrameRate(fps) {
         if (typeof fps != 'number')
             throw new Error('Parameter fps has to be number');
@@ -190,4 +206,4 @@ class Canvas {
 
 }
 
-module.exports = Canvas;
+module.exports = { Canvas, FrameBuffer };
